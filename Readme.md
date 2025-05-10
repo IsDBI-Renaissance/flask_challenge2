@@ -32,7 +32,7 @@ Prerequisites:
 - OpenAI API key
 
 1. Clone repository:
-   git clone https://github.com/your-repo/aaoifi-classifier.git
+   git clone https://github.com/IsDBI-Renaissance/flask_challenge2.githttps://github.com/IsDBI-Renaissance/flask_challenge2.git
    cd aaoifi-classifier
 
 2. Install dependencies:
