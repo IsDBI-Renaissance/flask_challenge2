@@ -12,12 +12,12 @@ app = Flask(__name__)
 
 # Initialize the classifier
 classifier = ReverseTransactionClassifier(
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    together_api_key=os.getenv("TOGETHER_API_KEY")  # Changed parameter name
 )
 
 # Initialize the explainer
 explainer = ClassificationExplainer(
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    together_api_key=os.getenv("TOGETHER_API_KEY")  # Changed parameter name
 )
 
 @app.route('/health', methods=['GET'])

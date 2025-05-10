@@ -6,22 +6,25 @@ import numpy as np
 from openai import OpenAI
 
 class ReverseTransactionClassifier:
-    def __init__(self, openai_api_key: str = None):
+    def __init__(self, together_api_key: str = None):
         """
         Initialize the Reverse Transaction Classifier
         
         Args:
-            openai_api_key: OpenAI API key (optional, will use environment variable if not provided)
+            together_api_key: Together AI API key (optional, will use environment variable if not provided)
         """
         # Use provided API key or get from environment
-        if openai_api_key is None:
-            openai_api_key = os.environ.get("OPENAI_API_KEY")
+        if together_api_key is None:
+            together_api_key = os.environ.get("TOGETHER_API_KEY")
             
-        if not openai_api_key:
-            raise ValueError("OpenAI API key must be provided or set as OPENAI_API_KEY environment variable")
+        if not together_api_key:
+            raise ValueError("Together API key must be provided or set as TOGETHER_API_KEY environment variable")
             
-        # Initialize OpenAI client
-        self.client = OpenAI(api_key=openai_api_key)
+        # Initialize Together AI client
+        self.client = OpenAI(
+            api_key=together_api_key,
+            base_url="https://api.together.xyz/v1"
+        )
         
         # Load standards knowledge base
         self.standards_knowledge = self._load_standards_knowledge()
@@ -401,13 +404,15 @@ class ReverseTransactionClassifier:
         "most_likely_standard", "probabilities" (array of objects with "standard", "score", "reasoning" keys), and "key_features" (array of strings).
         """
         
-        # Query the LLM
+        # Query the Together AI API
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="meta-llama/Llama-3-70b-chat-hf",
             messages=[
-                {"role": "system", "content": system_prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Analyze these journal entries"}
             ],
-            temperature=0.3,  # Low temperature for more deterministic results
+            temperature=0.3,
+            max_tokens=2000,
             response_format={"type": "json_object"}
         )
         
@@ -417,7 +422,7 @@ class ReverseTransactionClassifier:
         except (json.JSONDecodeError, KeyError):
             # Fallback to default results if parsing fails
             return {
-                "most_likely_standard": "FAS_4",  # Default to common standard
+                "most_likely_standard": "FAS_4",
                 "probabilities": [
                     {"standard": "FAS_4", "score": 0.5, "reasoning": "Default fallback due to parsing error"}
                 ],
@@ -443,17 +448,15 @@ class ReverseTransactionClassifier:
         for feature in features:
             if feature["feature"] == "account_names":
                 for std_id, score_info in feature["standard_scores"].items():
-                    standard_scores[std_id] += score_info["score"] * 0.3  # 30% weight
-                    # Add evidence if score is significant
+                    standard_scores[std_id] += score_info["score"] * 0.3
                     if score_info["score"] > 0.1 and score_info["evidence"]:
-                        standard_evidence[std_id].extend(score_info["evidence"][:2])  # Top 2 pieces of evidence
+                        standard_evidence[std_id].extend(score_info["evidence"][:2])
         
         # Process transaction structure feature
         for feature in features:
             if feature["feature"] == "transaction_structure" and "pattern_scores" in feature:
                 for std_id, pattern_info in feature["pattern_scores"].items():
-                    standard_scores[std_id] += pattern_info["score"] * 0.4  # 40% weight
-                    # Add matching patterns as evidence
+                    standard_scores[std_id] += pattern_info["score"] * 0.4
                     for match in pattern_info["matches"]:
                         standard_evidence[std_id].append(
                             f"Matches pattern '{match['pattern']}' with {match['confidence']:.2f} confidence"
@@ -465,7 +468,7 @@ class ReverseTransactionClassifier:
             score = prob["score"]
             
             if std_id in standard_scores:
-                standard_scores[std_id] += score * 0.3  # 30% weight
+                standard_scores[std_id] += score * 0.3
                 standard_evidence[std_id].append(f"Semantic analysis: {prob['reasoning']}")
         
         # Normalize scores
@@ -486,9 +489,9 @@ class ReverseTransactionClassifier:
             {
                 "standard": std_id,
                 "probability": score,
-                "reason": "\n".join(standard_evidence[std_id][:3])  # Top 3 reasons
+                "reason": "\n".join(standard_evidence[std_id][:3])
             }
-            for std_id, score in sorted_standards[:3] if score > 0.05  # Only standards with significant scores
+            for std_id, score in sorted_standards[:3] if score > 0.05
         ]
         
         # Get most likely standard
@@ -573,7 +576,7 @@ class ReverseTransactionClassifier:
                 overlap = pattern_set.intersection(input_set)
                 match_score = len(overlap) / max(len(pattern_set), 1)
                 
-                if match_score > 0.3:  # If there's some meaningful overlap
+                if match_score > 0.3:
                     pattern_matches.append({
                         "pattern_name": pattern_name,
                         "pattern_accounts": pattern_info["accounts"],
@@ -606,7 +609,6 @@ class ReverseTransactionClassifier:
         Returns:
             List of common journal entry templates
         """
-        # This would ideally be expanded with more comprehensive examples
         common_entries = {
             "FAS_4": [
                 {

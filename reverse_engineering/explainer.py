@@ -1,23 +1,27 @@
 from typing import Dict, List, Any
 from openai import OpenAI
+import os
 
 class ClassificationExplainer:
-    def __init__(self, openai_api_key: str = None):
+    def __init__(self, together_api_key: str = None):
         """
         Initialize the Classification Explainer
         
         Args:
-            openai_api_key: OpenAI API key (optional, will use environment variable if not provided)
+            together_api_key: Together AI API key (optional, will use environment variable if not provided)
         """
         # Use provided API key or get from environment
-        if openai_api_key is None:
-            openai_api_key = os.environ.get("OPENAI_API_KEY")
+        if together_api_key is None:
+            together_api_key = os.environ.get("TOGETHER_API_KEY")
             
-        if not openai_api_key:
-            raise ValueError("OpenAI API key must be provided or set as OPENAI_API_KEY environment variable")
+        if not together_api_key:
+            raise ValueError("Together API key must be provided or set as TOGETHER_API_KEY environment variable")
             
-        # Initialize OpenAI client
-        self.client = OpenAI(api_key=openai_api_key)
+        # Initialize Together AI client
+        self.client = OpenAI(
+            api_key=together_api_key,
+            base_url="https://api.together.xyz/v1"
+        )
     
     def explain_classification(self, journal_entries: List[Dict], context: str, standard: str) -> str:
         """
@@ -56,13 +60,15 @@ class ClassificationExplainer:
         Structure your response with clear paragraphs and bullet points where appropriate.
         """
         
-        # Query the LLM
+        # Query the Together AI API
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="meta-llama/Llama-3-70b-chat-hf",
             messages=[
-                {"role": "system", "content": system_prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Explain this classification"}
             ],
-            temperature=0.5
+            temperature=0.5,
+            max_tokens=2000
         )
         
         return response.choices[0].message.content
